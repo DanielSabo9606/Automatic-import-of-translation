@@ -1,0 +1,93 @@
+#!/usr/bin/python3
+
+#Automatically merges back translation strings from Excel sheet.
+#Written by Daniel Sabo
+
+#Arguments:
+# -i <path/to/AllLangauges.ts>
+# -f <path/to/excel document>
+
+import xml.etree.cElementTree as ET
+from openpyxl import load_workbook
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-i", required=True, help="Input .TS file name or location")
+parser.add_argument("-f", required=True, help="Input excel document name or location")
+args = parser.parse_args()
+xml_File = args.i
+xmltree = ET.parse(xml_File)
+xmlroot = xmltree.getroot()
+print("Enter Excel file location: ")
+xlsx_File = args.f
+wb = load_workbook(filename=xlsx_File, read_only=True)
+sheet = wb.sheetnames
+ws = wb.worksheets[0]
+
+languageList = {
+    "English.xlsx": "translation-GBR_en-GB",
+    "Austrian.xlsx": "translation-AUT_de-AT",
+    "Belgium.xlsx": "translation-BEL_nl_BE",
+    "Swiss-German.xlsx": "translation-CHE_de-CH",
+    "Swiss-French.xlsx": "translation-CHE_fr-CH",
+    "Swiss-Italian.xlsx": "translation-CHE_it-CH",
+    "Chinese.xlsx": "translation-CI_zh-hant",
+    "Czech.xlsx": "translation-CZE_cs-CZ",
+    "German.xlsx": "translation-DEU_de-DE",
+    "Danish.xlsx": "translation-DNK_da-DK",
+    "Spanish.xlsx": "translation-ESP_es-ES",
+    "Finnish.xlsx": "translation-FIN_fi-FI",
+    "French.xlsx": "translation-FRA_fr-FR",
+    "Hungarian.xlsx": "translation-HUN_hu-HU",
+    "Italian.xlsx": "translation-ITA_it-IT",
+    "Korean.xlsx": "translation-KOR_ko-KR",
+    "Dutch.xlsx": "translation-NLD_nl-NL",
+    "Norwegian.xlsx": "translation-NOR_nb-NO",
+    "Polish.xlsx": "translation-POL_pl-PL",
+    "Portuguese.xlsx": "translation-PRT_pt-PT",
+    "Russian.xlsx": "translation-RUS_ru-RU",
+    "Slovakian.xlsx": "translation-SVK_sv-SK",
+    "Swedish.xlsx": "translation-SWE_sv-SE",
+    "Turkish.xlsx": "translation-TRK_tk-TK",
+    "Hebrew.xlsx": "translation-ISR_he-IL"
+}
+translation_tag = languageList[xlsx_File]
+
+# Loops through excel document finds contexts, if the cell is None(Empty) continue looping until bool is true
+for row in range(3, ws.max_row + 1): # Start from row 3 and add +1 each time
+    #Loops through column A,B and F then creates 2 lists for column and row to store its data returning from excel
+    for column in "a": #Loops through column A
+        cell_context = "{}{}".format(column, row) #Creates a list for column and row
+        new_context = ws[cell_context].value #adds the value of certain row and column to new_context
+        if new_context is None: #Tests if the value of context is None, if true loop again
+            continue
+        else:
+            context = new_context #If the if condition fails, it enters else and adds new context to context to be used later.
+        for column in "b":
+            cell_source = "{}{}".format(column, row)
+            new_source = ws[cell_source].value
+            if new_source is None:
+                continue
+            else:
+                source = new_source
+            for column in "f": #Incase translation document comes back in a different format, change "f" to whatever the column of the new translation is.
+                cell_translation = "{}{}".format(column, row)
+                new_translation = ws[cell_translation].value
+                if new_translation is None:
+                    continue
+                else:
+                    translation = new_translation
+                print(new_context, new_source, new_translation)
+        # For loop to iterate through XML to find name within context and source within message, once its true,
+        # finds the tag and replaces the string with new translation
+        for x in xmlroot.iter("context"):
+            for y in x.iter("name"):
+                if y.text == context:
+                    for z in x.iter("message"):
+                        for j in z.iter("source"):
+                            if j.text == source:
+                                for z in z.iter(translation_tag):
+                                        translations = str(z.text)
+                                        z.text = str(translation)
+                                        print("Done")
+xmltree.write(xml_File, encoding="utf-8", xml_declaration=True, short_empty_elements=False)
